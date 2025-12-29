@@ -3,53 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>prodromal // gleam</title>
+    <title>prodromal // lunacy</title>
     <link rel="icon" type="image/png" href="https://prodromal.github.io/prodromal.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;900&family=Fira+Code&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
-            --bg-dark: #0a050f;
-            --bg-violet: #1a0b2e;
-            --theme-accent: #9d174d;
-            --connection-red: #ff1a1a;
-            --clock-green: #00ff41;
+            --bg-light-blue: #e0f2fe;
+            --gold: #d4af37;
+            --silver: #94a3b8;
+            --text-dark: #334155;
+            --line-yellow: rgba(250, 204, 21, 0.4);
+            --clock-gold: #d4af37;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
 
         body, html {
             width: 100%; height: 100%;
-            background: radial-gradient(circle at center, var(--bg-violet) 0%, var(--bg-dark) 100%);
+            background: var(--bg-light-blue);
             overflow: hidden;
             font-family: 'Inter', sans-serif;
-            color: white;
+            color: var(--text-dark);
         }
 
-        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
         
         #cursor {
-            width: 8px; height: 8px; background: white; border-radius: 50%;
+            width: 8px; height: 8px; background: var(--text-dark); border-radius: 50%;
             position: fixed; pointer-events: none; z-index: 1000;
             transition: transform 0.1s ease;
         }
         #cursor.active {
-            transform: scale(5); background: var(--theme-accent);
-            box-shadow: 0 0 20px var(--theme-accent);
+            transform: scale(5); background: var(--gold);
+            box-shadow: 0 0 20px var(--gold);
         }
 
-        .view-layer {
+        .main-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 0.8s ease, transform 0.8s ease;
             z-index: 10;
-        }
-
-        #scroller-view { 
-            opacity: 0; 
-            visibility: hidden; 
-            z-index: 5;
-            transform: translateY(40px);
         }
 
         .top-right-ui {
@@ -65,8 +58,8 @@
             font-family: 'Fira Code', monospace;
             font-size: 1.5rem;
             font-weight: bold;
-            color: var(--clock-green);
-            text-shadow: 0 0 10px var(--clock-green), 0 0 20px rgba(0, 255, 65, 0.5);
+            color: var(--clock-gold);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
             letter-spacing: 2px;
         }
 
@@ -74,72 +67,51 @@
             font-size: 8rem;
             font-weight: 900;
             letter-spacing: -0.05em;
-            background: linear-gradient(to bottom, #ffffff, var(--theme-accent));
+            background: linear-gradient(to bottom, var(--text-dark), var(--gold));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 30px rgba(157, 23, 77, 0.6));
-            margin-bottom: 2rem;
+            filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.3));
+            margin-bottom: 3rem;
             text-transform: lowercase;
             animation: pulse 4s ease-in-out infinite;
             pointer-events: none;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(157, 23, 77, 0.6)); }
-            50% { transform: scale(1.02); filter: drop-shadow(0 0 50px rgba(157, 23, 77, 0.8)); }
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.3)); }
+            50% { transform: scale(1.02); filter: drop-shadow(0 0 40px rgba(212, 175, 55, 0.5)); }
+        }
+
+        .button-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            max-width: 800px;
+            padding: 0 20px;
         }
 
         .gleam-button {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.4);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(157, 23, 77, 0.5);
-            padding: 0.8rem 3rem; color: white;
+            border: 1px solid var(--gold);
+            padding: 0.8rem 3rem; 
+            color: var(--text-dark);
             font-family: 'Fira Code', monospace; font-size: 1.1rem;
             text-transform: lowercase; border-radius: 9999px;
             transition: all 0.3s ease;
-            z-index: 100;
             letter-spacing: 0.1rem;
             cursor: pointer;
             pointer-events: auto;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .gleam-button:hover { 
-            background: rgba(157, 23, 77, 0.3);
-            border-color: var(--theme-accent);
-            box-shadow: 0 0 25px rgba(157, 23, 77, 0.5);
+            background: var(--gold);
+            color: white;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
             transform: translateY(-3px);
-        }
-        
-        .shattering { 
-            animation: vibrate 0.1s infinite; 
-            opacity: 0; 
-            transform: scale(0.4); 
-        }
-
-        @keyframes vibrate {
-            0% { transform: translate(1px, 1px); }
-            50% { transform: translate(-1px, -1px); }
-            100% { transform: translate(1px, -1px); }
-        }
-
-        #scroller {
-            width: 100%; height: 100vh; overflow-y: scroll;
-            snap-type: y mandatory; scrollbar-width: none;
-        }
-        #scroller::-webkit-scrollbar { display: none; }
-
-        .artifact {
-            height: 100vh; width: 100vw; snap-align: start;
-            display: flex; align-items: center; justify-content: center; padding: 40px;
-        }
-
-        .meme-frame {
-            max-height: 82vh; max-width: 88vw; border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.1); 
-            box-shadow: 0 40px 80px rgba(0,0,0,0.9);
-            background: rgba(255,255,255,0.01);
-            backdrop-filter: blur(8px);
-            object-fit: contain;
         }
 
         @media (max-width: 640px) {
@@ -156,32 +128,23 @@
     </div>
     <canvas id="canvas"></canvas>
 
-    <div id="gateway-view" class="view-layer">
+    <div class="main-container">
         <h1 class="title">prodromal</h1>
-        <button class="gleam-button" id="gateBtn">start</button>
-    </div>
-
-    <div id="scroller-view" class="view-layer">
-        <main id="scroller">
-            <div class="artifact" style="opacity:0.2; font-family:'Fira Code'">[ access granted // syncing neural net ]</div>
-        </main>
+        
+        <div class="button-grid">
+            <!-- Currently one button, linked to the links page -->
+            <button class="gleam-button" onclick="window.location.href='https://prodromal.github.io/links.html'">initialise</button>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const gateBtn = document.getElementById('gateBtn');
-        const scroller = document.getElementById('scroller');
         const cursor = document.getElementById('cursor');
         
-        const pathParts = window.location.hostname.split('.');
-        const userName = pathParts[0] === 'localhost' ? 'prodromal' : pathParts[0];
-        const repoName = window.location.pathname.split('/')[1] || `${userName}.github.io`;
-
-        let width, height, particles = [], orbs = [], appState = 'gate';
+        let width, height, dots = [], orbs = [];
         let mouse = { x: -1000, y: -1000 };
 
-        // Digital Clock
         function updateClock() {
             const now = new Date();
             const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
@@ -193,7 +156,7 @@
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            createParticles();
+            createDots();
         }
         window.addEventListener('resize', resize);
 
@@ -209,52 +172,17 @@
             setTimeout(() => cursor.classList.remove('active'), 250);
         });
 
-        class Particle {
-            constructor() { this.reset(); }
-            reset() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.size = Math.random() * 3 + 1; 
-                this.speedX = (Math.random() - 0.5) * 0.6;
-                this.speedY = (Math.random() - 0.5) * 0.6;
-                this.color = Math.random() > 0.4 ? '#9d174d' : '#ffffff';
-                this.opacity = Math.random() * 0.5 + 0.3; 
-            }
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-
-                const dx = mouse.x - this.x;
-                const dy = mouse.y - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < 150) {
-                    const force = (150 - distance) / 150;
-                    this.x -= (dx / distance) * force * 3;
-                    this.y -= (dy / distance) * force * 3;
-                }
-
-                orbs.forEach(orb => {
-                    const odx = orb.x - this.x;
-                    const ody = orb.y - this.y;
-                    const oDist = Math.sqrt(odx * odx + ody * ody);
-                    if (oDist < 400) {
-                        const oForce = (400 - oDist) / 400;
-                        this.x += (odx / oDist) * oForce * 6;
-                        this.y += (ody / oDist) * oForce * 6;
-                    }
+        function createDots() {
+            dots = [];
+            const count = 60;
+            for (let i = 0; i < count; i++) {
+                dots.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    r: Math.random() * 2 + 1
                 });
-
-                if (this.x < 0) this.x = width;
-                if (this.x > width) this.x = 0;
-                if (this.y < 0) this.y = height;
-                if (this.y > height) this.y = 0;
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = this.opacity;
-                ctx.fill();
             }
         }
 
@@ -262,7 +190,7 @@
             constructor(x, y) {
                 this.x = x; this.y = y;
                 this.startTime = Date.now();
-                this.duration = 5000;
+                this.duration = 2000;
             }
             update() { return Date.now() - this.startTime < this.duration; }
             draw() {
@@ -270,86 +198,61 @@
                 const op = 1 - (elapsed / this.duration);
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#ffffff';
-                ctx.globalAlpha = op;
+                ctx.arc(this.x, this.y, 15 * op, 0, Math.PI * 2);
+                ctx.fillStyle = '#d4af37';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#d4af37';
+                ctx.globalAlpha = op * 0.5;
                 ctx.fill();
                 ctx.restore();
             }
         }
 
-        function createParticles() {
-            const count = (width * height) / 3000;
-            particles = [];
-            for (let i = 0; i < count; i++) particles.push(new Particle());
-        }
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            dots.forEach((d, i) => {
+                d.x += d.vx;
+                d.y += d.vy;
 
-        function drawConnections() {
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 100) {
+                if (d.x < 0 || d.x > width) d.vx *= -1;
+                if (d.y < 0 || d.y > height) d.vy *= -1;
+
+                const mdx = mouse.x - d.x;
+                const mdy = mouse.y - d.y;
+                const mdist = Math.hypot(mdx, mdy);
+                if (mdist < 150) {
+                    d.x -= mdx * 0.02;
+                    d.y -= mdy * 0.02;
+                }
+
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                for (let j = i + 1; j < dots.length; j++) {
+                    const d2 = dots[j];
+                    const dist = Math.hypot(d.x - d2.x, d.y - d2.y);
+                    if (dist < 180) {
+                        ctx.strokeStyle = `rgba(212, 175, 55, ${0.2 * (1 - dist / 180)})`;
+                        ctx.lineWidth = 1;
                         ctx.beginPath();
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.strokeStyle = '#ff1a1a';
-                        ctx.globalAlpha = (1 - (dist / 100)) * 0.4;
-                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(d.x, d.y);
+                        ctx.lineTo(d2.x, d2.y);
                         ctx.stroke();
                     }
                 }
-            }
-        }
+            });
 
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            drawConnections();
             orbs = orbs.filter(orb => {
                 const alive = orb.update();
                 if (alive) orb.draw();
                 return alive;
             });
-            particles.forEach(p => { p.update(); p.draw(); });
+
             requestAnimationFrame(animate);
         }
-
-        async function fetchMemes() {
-            try {
-                const r = await fetch(`https://api.github.com/repos/${userName}/${repoName}/contents/memes`);
-                if (!r.ok) throw new Error();
-                const data = await r.json();
-                scroller.innerHTML = '';
-                const images = data.filter(file => file.name.match(/\.(png|jpg|jpeg|gif|webp)$/i));
-                if(images.length === 0) throw new Error();
-                images.forEach(file => {
-                    const sect = document.createElement('section'); sect.className = 'artifact';
-                    const img = document.createElement('img'); img.className = 'meme-frame';
-                    img.src = file.download_url; img.loading = 'lazy';
-                    sect.appendChild(img); scroller.appendChild(sect);
-                });
-            } catch(e) { 
-                scroller.innerHTML = '<div class="artifact" style="opacity:0.3; font-family:\'Fira Code\'">[ void: "memes" folder empty or unreachable ]</div>'; 
-            }
-        }
-
-        gateBtn.addEventListener('click', () => {
-            gateBtn.classList.add('shattering');
-            appState = 'scroller';
-            setTimeout(() => {
-                document.getElementById('gateway-view').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('gateway-view').style.display = 'none';
-                    document.getElementById('scroller-view').style.visibility = 'visible';
-                    document.getElementById('scroller-view').style.opacity = '1';
-                    document.getElementById('scroller-view').style.transform = 'translateY(0)';
-                    fetchMemes();
-                }, 800);
-            }, 600);
-        });
 
         window.onload = () => {
             resize();
