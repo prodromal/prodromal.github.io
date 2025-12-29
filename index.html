@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gleam // neural cache</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --void: #0a050f;
+            --sangria: #9d174d;
+            --neural-yellow: #facc15;
+            --atmosphere: radial-gradient(circle at center, #1a0b2e 0%, #0a050f 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+
+        body, html {
+            width: 100%; height: 100%;
+            background-color: var(--void);
+            background: var(--atmosphere);
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+
+        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        #cursor {
+            width: 8px; height: 8px; background: white; border-radius: 50%;
+            position: fixed; pointer-events: none; z-index: 1000;
+            transition: transform 0.1s ease;
+        }
+        #cursor.active {
+            transform: scale(5); background: var(--sangria);
+            box-shadow: 0 0 20px var(--sangria);
+        }
+
+        /* Layout Layers */
+        .view-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        #scroller-view { 
+            opacity: 0; 
+            visibility: hidden; 
+            z-index: 5;
+            transform: translateY(40px);
+        }
+
+        /* Buttons & UI */
+        .gleam-button {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2rem 4.5rem; color: white;
+            font-family: 'Fira Code', monospace; font-size: 1.6rem;
+            text-transform: lowercase; border-radius: 2px;
+            transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            letter-spacing: 0.3rem;
+        }
+
+        .gleam-button:hover { 
+            border-color: var(--sangria); 
+            background: rgba(157, 23, 77, 0.05);
+            box-shadow: 0 0 50px rgba(157, 23, 77, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .shattering { 
+            animation: vibrate 0.1s infinite; 
+            opacity: 0; 
+            transform: scale(0.4); 
+        }
+
+        @keyframes vibrate {
+            0% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, -1px); }
+        }
+
+        /* Scroller */
+        #scroller {
+            width: 100%; height: 100vh; overflow-y: scroll;
+            snap-type: y mandatory; scrollbar-width: none;
+        }
+        #scroller::-webkit-scrollbar { display: none; }
+
+        .artifact {
+            height: 100vh; width: 100vw; snap-align: start;
+            display: flex; align-items: center; justify-content: center; padding: 40px;
+        }
+
+        .meme-frame {
+            max-height: 82vh; max-width: 88vw; border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.1); 
+            box-shadow: 0 40px 80px rgba(0,0,0,0.9);
+            background: rgba(255,255,255,0.01);
+            backdrop-filter: blur(8px);
+            object-fit: contain;
+        }
+
+        .hud {
+            position: fixed; top: 30px; left: 30px; z-index: 1000;
+            font-family: 'Fira Code', monospace; font-size: 0.65rem;
+            background: rgba(255,255,255,0.03); padding: 10px 20px;
+            border-radius: 50px; border: 1px solid rgba(255,255,255,0.05);
+            pointer-events: none; opacity: 0.6;
+            text-transform: lowercase;
+            letter-spacing: 2px;
+        }
+        .accent { color: var(--sangria); }
+    </style>
+</head>
+<body>
+
+    <div id="cursor"></div>
+    <div class="hud" id="hud-text">gleam // neural cache</div>
+    <canvas id="canvas"></canvas>
+
+    <div id="gateway-view" class="view-layer">
+        <button class="gleam-button" id="gateBtn">
+            <h1 id="brand-name">initializing...</h1>
+        </button>
+    </div>
+
+    <div id="scroller-view" class="view-layer">
+        <main id="scroller">
+            <div class="artifact" style="opacity:0.2; font-family:'Fira Code'">[ access granted // syncing neural net ]</div>
+        </main>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const gateBtn = document.getElementById('gateBtn');
+        const brandName = document.getElementById('brand-name');
+        const scroller = document.getElementById('scroller');
+        const cursor = document.getElementById('cursor');
+        
+        // Auto-detect identity from URL
+        const pathParts = window.location.hostname.split('.');
+        const userName = pathParts[0] === 'localhost' ? 'paraphrenic' : pathParts[0];
+        const repoName = window.location.pathname.split('/')[1] || `${userName}.github.io`;
+        
+        brandName.innerText = userName;
+        document.getElementById('hud-text').innerHTML = `gleam // <span class="accent">${userName}</span> // cache`;
+
+        let width, height, particles = [], gravityPoints = [], isHovering = false, appState = 'gate';
+        let mouse = { x: -100, y: -100 };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX; mouse.y = e.clientY;
+            cursor.style.left = e.x + 'px';
+            cursor.style.top = e.y + 'px';
+        });
+
+        window.addEventListener('mousedown', () => {
+            if(!isHovering) {
+                // Persistent gravity points (stays for 4 seconds)
+                gravityPoints.push({ x: mouse.x, y: mouse.y, time: Date.now() });
+                cursor.classList.add('active');
+                setTimeout(() => cursor.classList.remove('active'), 250);
+            }
+        });
+
+        class Particle {
+            constructor() { 
+                this.x = Math.random() * width; 
+                this.y = Math.random() * height; 
+                this.vx = (Math.random() - 0.5) * 0.4; 
+                this.vy = (Math.random() - 0.5) * 0.4; 
+                this.r = Math.random() * 1.2 + 0.6;
+            }
+            update() {
+                // 1. Button Vortex: Orbital/Spinning logic only for the central button
+                if(isHovering && appState === 'gate') {
+                    let dx = (width/2) - this.x, dy = (height/2) - this.y, d = Math.sqrt(dx*dx+dy*dy);
+                    if(d < 600) {
+                        let f = (25 / (d + 1));
+                        this.vx += (dx/d)*f + (dy/d)*2.5; // Adding perpendicular force for spin
+                        this.vy += (dy/d)*f - (dx/d)*2.5;
+                    }
+                }
+                
+                // 2. Click Gravity Points: Direct attraction (like stone balls)
+                const now = Date.now();
+                gravityPoints = gravityPoints.filter(g => now - g.time < 4000);
+                gravityPoints.forEach(g => {
+                    let dx = g.x - this.x, dy = g.y - this.y, d = Math.sqrt(dx*dx+dy*dy);
+                    if(d < 800) {
+                        let pull = 2.5 / (d + 15); 
+                        this.vx += dx * pull; // Pure attraction, no rotation
+                        this.vy += dy * pull;
+                    }
+                });
+
+                this.vx *= 0.93; this.vy *= 0.93; // High friction for "heavy" feel
+                this.x += this.vx; this.y += this.vy;
+                
+                if(this.x < 0) this.x = width; if(this.x > width) this.x = 0;
+                if(this.y < 0) this.y = height; if(this.y > height) this.y = 0;
+            }
+            draw() {
+                ctx.fillStyle = '#facc1522';
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        for(let i=0; i<180; i++) particles.push(new Particle());
+
+        function loop() {
+            ctx.fillStyle = '#0a050f'; ctx.fillRect(0,0,width,height);
+            
+            for(let i=0; i<particles.length; i++) {
+                particles[i].update(); 
+                particles[i].draw();
+                for(let j=i+1; j<particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let d = Math.sqrt(dx*dx+dy*dy);
+                    if(d < 110) {
+                        ctx.strokeStyle = `rgba(157,23,77,${0.7 - d/110})`; 
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); 
+                        ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+
+        async function fetchMemes() {
+            try {
+                // Fetching from the /memes folder of whichever repo this is hosted on
+                const r = await fetch(`https://api.github.com/repos/${userName}/${repoName}/contents/memes`);
+                if (!r.ok) throw new Error();
+                const data = await r.json();
+                scroller.innerHTML = '';
+                
+                const images = data.filter(file => file.name.match(/\.(png|jpg|jpeg|gif|webp)$/i));
+                if(images.length === 0) throw new Error();
+
+                images.forEach(file => {
+                    const sect = document.createElement('section'); sect.className = 'artifact';
+                    const img = document.createElement('img'); img.className = 'meme-frame';
+                    img.src = file.download_url; img.loading = 'lazy';
+                    sect.appendChild(img); scroller.appendChild(sect);
+                });
+            } catch(e) { 
+                scroller.innerHTML = '<div class="artifact" style="opacity:0.3; font-family:\'Fira Code\'">[ void: "memes" folder empty or unreachable ]</div>'; 
+            }
+        }
+
+        gateBtn.addEventListener('mouseenter', () => isHovering = true);
+        gateBtn.addEventListener('mouseleave', () => isHovering = false);
+        gateBtn.addEventListener('click', () => {
+            gateBtn.classList.add('shattering');
+            appState = 'scroller';
+            setTimeout(() => {
+                document.getElementById('gateway-view').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('gateway-view').style.display = 'none';
+                    document.getElementById('scroller-view').style.visibility = 'visible';
+                    document.getElementById('scroller-view').style.opacity = '1';
+                    document.getElementById('scroller-view').style.transform = 'translateY(0)';
+                    fetchMemes();
+                }, 800);
+            }, 600);
+        });
+
+        loop();
+    </script>
+</body>
+</html>
