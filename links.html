@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>prodromal // links</title>
+    <link rel="icon" type="image/png" href="https://prodromal.github.io/prodromal.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;900&family=Fira+Code&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-light-blue: #e0f2fe;
+            --gold: #d4af37;
+            --text-dark: #334155;
+        }
+
+        body {
+            background: var(--bg-light-blue);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4rem 20px;
+        }
+
+        .header-title {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(to bottom, var(--text-dark), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            text-transform: lowercase;
+        }
+
+        .description {
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        #links-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .link-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            padding: 1.2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .link-card:hover {
+            transform: translateX(10px);
+            border-color: var(--gold);
+            background: white;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .link-name { font-weight: bold; }
+        .link-arrow { color: var(--gold); font-size: 1.2rem; }
+
+        .loading-text {
+            font-family: 'Fira Code', monospace;
+            color: var(--gold);
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="header-title">links</h1>
+    <p class="description">
+        Lunacy is a chat by gleam, provided by prodromal. It is a simple, one html file and below are the links for it!
+    </p>
+
+    <div id="links-container">
+        <div class="loading-text">fetching resources...</div>
+    </div>
+
+    <script>
+        const container = document.getElementById('links-container');
+        const DATA_URL = 'https://prodromal.github.io/links/list.json';
+
+        async function fetchLinks() {
+            try {
+                const response = await fetch(DATA_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const links = await response.json();
+                renderLinks(links);
+            } catch (error) {
+                console.error('Error fetching links:', error);
+                container.innerHTML = `
+                    <div class="text-red-500 font-mono text-center p-4">
+                        [error]: failed to load links.<br>
+                        check console for details.
+                    </div>
+                `;
+            }
+        }
+
+        function renderLinks(links) {
+            container.innerHTML = ''; // Clear loading state
+
+            if (links.length === 0) {
+                container.innerHTML = '<div class="text-center opacity-50">no links found.</div>';
+                return;
+            }
+
+            links.forEach(link => {
+                const a = document.createElement('a');
+                a.href = link.url;
+                a.className = 'link-card';
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+
+                a.innerHTML = `
+                    <span class="link-name">${link.name.toLowerCase()}</span>
+                    <span class="link-arrow">→</span>
+                `;
+
+                container.appendChild(a);
+            });
+        }
+
+        // Initialize fetch on load
+        fetchLinks();
+    </script>
+</body>
+</html>
